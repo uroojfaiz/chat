@@ -1,0 +1,204 @@
+/* RESET */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: "Poppins", sans-serif;
+}
+
+body {
+  height: 100vh;
+  background-color:#03443d;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Main container */
+.sign-page {
+  width: 90%;
+  max-width: 1000px;
+  height: 80%;
+  display: flex;
+  background-color: #ffffff;
+  border-radius: 15px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+  overflow: hidden;
+}
+
+/* Left side - form */
+.sign-box {
+  flex: 1;
+  padding: 40px 30px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.sign-logo {
+  font-size: 32px;
+  font-weight: bold;
+  color: #075e54;
+  margin-bottom: 20px;
+}
+
+h1 {
+  font-size: 24px;
+  color: #222;
+  margin-bottom: 10px;
+}
+
+p {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 20px;
+  line-height: 1.8rem;
+}
+
+/* Inputs */
+.sign-inp {
+  margin-bottom: 15px;
+}
+
+.sign-inp input {
+  width: 100%;
+  padding: 12px 15px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.sign-inp input:focus {
+  outline: none;
+  border-color: #075e54;
+  box-shadow: 0 0 5px rgba(7,94,84,0.3);
+}
+
+/* Create Account button */
+#sign-create {
+  width: 100%;
+  padding: 12px;
+  background: #075e54;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+#sign-create:hover {
+  background: #0a7868;
+}
+
+.sign-box p a {
+  color: #075e54;
+  text-decoration: none;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.sign-box p a:hover {
+  text-decoration: underline;
+}
+
+/* Theme button */
+#theme {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+#theme img {
+  width: 30px;
+  height: 30px;
+}
+
+/* Right side - image */
+.sign-img-container {
+  flex: 1;
+  background-color:#03443d;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+
+#sign-img {
+  position: absolute;
+  bottom: 50px;
+  right: 10px;
+  width: 450px;
+
+  
+  animation: bounce 2s infinite ease-in-out, moveSide 4s infinite linear;
+}
+
+ /* Bounce up-down motion */
+    @keyframes bounce {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(30px);
+      }
+    }
+
+/* Responsive Layout */
+@media screen and (max-width: 900px) {
+  .sign-page {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .sign-box, .sign-img-container {
+    flex: none;
+    width: 100%;
+  }
+
+  #sign-img {
+   visibility: hidden;
+   display: none;
+  }
+
+  .sign-box {
+    padding: 30px 20px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  h1 {
+    font-size: 20px;
+  }
+
+  p {
+    font-size: 13px;
+    line-height: 1.5rem;
+  }
+
+  .sign-inp input {
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  #sign-create {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  #theme img {
+    width: 25px;
+    height: 25px;
+  }
+
+  #sign-img {
+   visibility: hidden;
+   display: none;
+  }
+}

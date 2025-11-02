@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatX - Realtime Chat</title>
+  <link rel="stylesheet" href="chat.css" />
+  <link rel="shortcut icon" href="./download.png" type="image/x-icon" />
+</head>
+<body>
+  <div class="chatbox">
+    <div class="chat-header">
+      <div class="chat-logo">ChatX</div>
+      <div class="header-actions">
+        <button id="logout-button">Logout</button>
+        <button id="theme"><img src="sun.png" alt="">Theme</button>
+        <button id="qr-toggle">QR</button>
+      </div>
+    </div>
+
+    <div id="qr-container">
+      <canvas id="qrcode"></canvas>
+    </div>
+
+    <h1>ChatX – Your Gateway to Global Conversations 🌎</h1>
+
+    <div class="chat">
+      <div id="show"></div>
+<div class="input-area">
+        <div class="emoji-container">
+          <img src="./download (2).png" alt="" id="emoji-btn" />
+          <div id="emoji-picker"></div>
+        </div>
+        <input type="text" id="message-input" placeholder="Type your message here..." />
+        <button id="send-button">Send</button>
+      </div>
+      
+    </div>
+    
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
