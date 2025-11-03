@@ -278,3 +278,70 @@ window.addEventListener("load", () => {
     window.addEventListener("resize", updateScrollArea);
   }
 });
+
+import { auth, db } from "./firebaseConfig.js"; // tumhara firebase config
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  onSnapshot,
+  orderBy,
+  query
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const show = document.getElementById("show");
+const input = document.getElementById("message-input");
+const sendButton = document.getElementById("send-button");
+
+let currentUserEmail = null;
+
+// 🔹 User ka email le lo (jab login hota hai)
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    currentUserEmail = user.email;
+    loadMessages();
+  }
+});
+
+function loadMessages() {
+  const q = query(collection(db, "messages"), orderBy("timestamp"));
+  onSnapshot(q, (snapshot) => {
+    show.innerHTML = "";
+    snapshot.forEach((doc) => {
+      const msg = doc.data();
+      const div = document.createElement("div");
+
+      // 🔹 Check karo: agar ye current user ka message hai to right side
+      if (msg.email === currentUserEmail) {
+        div.classList.add("chat-message", "self");
+      } else {
+        div.classList.add("chat-message");
+      }
+
+      div.innerHTML = `
+        <div class="msg-header">
+          <b>${msg.email.split("@")[0]}</b> • 
+          ${msg.time || ""}
+        </div>
+        <div class="msg-body">${msg.text}</div>
+      `;
+      show.appendChild(div);
+      show.scrollTop = show.scrollHeight; // Auto scroll to bottom
+    });
+  });
+}
+
+// 🔹 Message bhejna
+sendButton.addEventListener("click", async () => {
+  const text = input.value.trim();
+  if (text === "" || !currentUserEmail) return;
+
+  await addDoc(collection(db, "messages"), {
+    email: currentUserEmail,
+    text,
+    timestamp: serverTimestamp(),
+    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  });
+
+  input.value = "";
+});
