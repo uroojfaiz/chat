@@ -19,6 +19,7 @@ import {
   updateDoc,
   doc,
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
+import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js";
 
 // ========================== Firebase Config ==========================
 const firebaseConfig = {
@@ -31,7 +32,7 @@ const firebaseConfig = {
   measurementId: "G-STZ7XGVBHH",
 };
 
-// ========================== Initialize ==========================
+// ========================== Initialize Firebase ==========================
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -68,7 +69,7 @@ document.getElementById("logout-button")?.addEventListener("click", () => {
   });
 });
 
-// ========================== USERNAME SETUP ==========================
+// ========================== Username Setup ==========================
 document.getElementById("username-set")?.addEventListener("click", () => {
   const username = document.getElementById("username").value.trim();
   if (username) {
@@ -80,28 +81,47 @@ document.getElementById("username-set")?.addEventListener("click", () => {
   }
 });
 
-// ========================== CHAT LOGIC ==========================
+// ========================== Chat Logic ==========================
 const show = document.getElementById("show");
 const input = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 
 let currentUserEmail = null;
 
-// Auth state check
+// ========================== Auth State ==========================
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUserEmail = user.email;
 
-    const username = localStorage.getItem("username");
+    // Generate QR code using username
+    const qrDiv = document.getElementById("qrcode");
+    const username = localStorage.getItem("username") || user.email;
+    if (qrDiv) {
+      QRCode.toCanvas(qrDiv, username, (error) => {
+        if (error) console.error(error);
+      });
+    }
+
     if (!username) {
       alert("Please set your username first!");
       window.location.href = "user.html";
-    } else if (window.location.pathname.endsWith("index.html")) {
-      // Optional: redirect logged-in users from login page
-      window.location.href = "chat.html";
     } else {
       loadMessages();
     }
+
+    // Theme toggle
+    const themeBtn = document.getElementById("theme-btn");
+    const body = document.body;
+    const savedTheme = localStorage.getItem("theme") || "light";
+    body.setAttribute("data-theme", savedTheme);
+
+    themeBtn?.addEventListener("click", () => {
+      const current = body.getAttribute("data-theme");
+      const newTheme = current === "light" ? "dark" : "light";
+      body.setAttribute("data-theme", newTheme);
+      localStorage.setItem("theme", newTheme);
+    });
+
   } else {
     currentUserEmail = null;
     if (!window.location.pathname.endsWith("index.html")) {
@@ -110,7 +130,7 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// Send message
+// ========================== Send Message ==========================
 sendButton?.addEventListener("click", sendMessage);
 input?.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
@@ -133,7 +153,7 @@ async function sendMessage() {
   });
 }
 
-// Load messages
+// ========================== Load Messages ==========================
 function loadMessages() {
   const q = query(collection(db, "messages"), orderBy("timestamp"));
   onSnapshot(q, (snapshot) => {
@@ -144,7 +164,10 @@ function loadMessages() {
 
       const div = document.createElement("div");
       div.classList.add("chat-message");
+
+      // Right for current user, left for others
       if (msg.email === currentUserEmail) div.classList.add("self");
+      else div.classList.add("other");
 
       div.innerHTML = `
         <div class="msg-header">
@@ -161,7 +184,7 @@ function loadMessages() {
         <div class="msg-body">${msg.text}</div>
       `;
 
-      // Edit button
+      // Edit
       const editBtn = div.querySelector(".edit-btn");
       editBtn?.addEventListener("click", async () => {
         const newText = prompt("Edit your message:", msg.text);
@@ -170,7 +193,7 @@ function loadMessages() {
         }
       });
 
-      // Delete button
+      // Delete
       const delBtn = div.querySelector(".delete-btn");
       delBtn?.addEventListener("click", async () => {
         if (confirm("Delete this message?")) {
@@ -185,60 +208,17 @@ function loadMessages() {
   });
 }
 
-// ========================== EMOJI PICKER ==========================
+// ========================== Emoji Picker ==========================
 const emojiBtn = document.getElementById("emoji-btn");
 const emojiPicker = document.getElementById("emoji-picker");
 
 if (emojiBtn && emojiPicker && input) {
   const emojis = [
     "😀","😃","😄","😁","😆","😅","😂","🤣","🥲","☺️","😊","😇","🙂","🙃","😉",
-    "😍","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤓","😎","🥳","😏",
-    "😞","😔","😟","😕","🙁","☹️","😣","😖","😫","🥺","😢","😭","😤","😠","😡",
-    "🤬","🤯","😳","🥵","🥶","😱","😰","😥","😓","🤗","🤔","🤭","🤫","🤥","😶",
-    "😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐",
-    "🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👹","👺","💀","👻","👽",
-    "👾","🤖","💩","😺","😸","😹","😻","😼","😽","🙀","😿","😾","🫣","🫡","🫢",
-    "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗",
-    "💖","💘","💝","💟","💌","🔥","✨","⚡","💥","💫","💦","💨","🕳️","💣","💬"
-  ];
-
-  emojis.forEach((e) => {
-    const span = document.createElement("span");
-    span.textContent = e;
-    span.style.cursor = "pointer";
-    span.addEventListener("click", () => {
-      input.value += e;
-      emojiPicker.style.display = "none";
-      input.focus();
-    });
-    emojiPicker.appendChild(span);
-  });
-
-  emojiBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    emojiPicker.style.display =
-      emojiPicker.style.display === "block" ? "none" : "block";
-  });
-
-  document.addEventListener("click", (e) => {
-    if (!emojiBtn.contains(e.target) && !emojiPicker.contains(e.target))
-      emojiPicker.style.display = "none";
-  });
-}
-
-// ========================== SCROLL & INPUT ADJUST ==========================
-window.addEventListener("load", () => {
-  const chatContainer = document.getElementById("show");
-  const chatBox = document.querySelector(".chat");
-  const inputArea = document.querySelector(".input-area");
-
-  if (chatContainer && chatBox && inputArea) {
-    const updateScrollArea = () => {
-      const availableHeight = chatBox.clientHeight - inputArea.offsetHeight - 20;
-      chatContainer.style.maxHeight = `${availableHeight}px`;
-      chatContainer.style.overflowY = "auto";
-    };
-    updateScrollArea();
-    window.addEventListener("resize", updateScrollArea);
-  }
-});
+    "😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓",
+    "😎","🥸","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫",
+    "🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰",
+    "😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧",
+    "😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕",
+    "🤑","🤠","😈","👿","👹","👺","💀","☠️","👻","👽","👾","🤖","💩","😺","😸",
+    "😹","😻","😼","😽","🙀","
