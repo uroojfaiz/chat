@@ -68,7 +68,7 @@ document.getElementById("logout-button")?.addEventListener("click", () => {
   });
 });
 
-// ========================== USERNAME ==========================
+// ========================== USERNAME SETUP ==========================
 document.getElementById("username-set")?.addEventListener("click", () => {
   const username = document.getElementById("username").value.trim();
   if (username) {
@@ -80,13 +80,14 @@ document.getElementById("username-set")?.addEventListener("click", () => {
   }
 });
 
-// ========================== Chat Logic ==========================
+// ========================== CHAT LOGIC ==========================
 const show = document.getElementById("show");
 const input = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
 
 let currentUserEmail = null;
 
+// Auth state check
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUserEmail = user.email;
@@ -95,16 +96,21 @@ onAuthStateChanged(auth, (user) => {
     if (!username) {
       alert("Please set your username first!");
       window.location.href = "user.html";
+    } else if (window.location.pathname.endsWith("index.html")) {
+      // Optional: redirect logged-in users from login page
+      window.location.href = "chat.html";
     } else {
       loadMessages();
     }
   } else {
     currentUserEmail = null;
-    window.location.href = "index.html";
+    if (!window.location.pathname.endsWith("index.html")) {
+      window.location.href = "index.html";
+    }
   }
 });
 
-// ✅ Send Message
+// Send message
 sendButton?.addEventListener("click", sendMessage);
 input?.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
@@ -127,7 +133,7 @@ async function sendMessage() {
   });
 }
 
-// ✅ Load Messages
+// Load messages
 function loadMessages() {
   const q = query(collection(db, "messages"), orderBy("timestamp"));
   onSnapshot(q, (snapshot) => {
@@ -155,7 +161,7 @@ function loadMessages() {
         <div class="msg-body">${msg.text}</div>
       `;
 
-      // Edit Button
+      // Edit button
       const editBtn = div.querySelector(".edit-btn");
       editBtn?.addEventListener("click", async () => {
         const newText = prompt("Edit your message:", msg.text);
@@ -164,7 +170,7 @@ function loadMessages() {
         }
       });
 
-      // Delete Button
+      // Delete button
       const delBtn = div.querySelector(".delete-btn");
       delBtn?.addEventListener("click", async () => {
         if (confirm("Delete this message?")) {
@@ -179,26 +185,21 @@ function loadMessages() {
   });
 }
 
-// ========================== Emoji Picker ==========================
+// ========================== EMOJI PICKER ==========================
 const emojiBtn = document.getElementById("emoji-btn");
 const emojiPicker = document.getElementById("emoji-picker");
 
 if (emojiBtn && emojiPicker && input) {
   const emojis = [
     "😀","😃","😄","😁","😆","😅","😂","🤣","🥲","☺️","😊","😇","🙂","🙃","😉",
-    "😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓",
-    "😎","🥸","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫",
-    "😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰",
-    "😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧",
-    "😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕",
-    "🤑","🤠","😈","👿","👹","👺","💀","☠️","👻","👽","👾","🤖","💩","😺","😸",
-    "😹","😻","😼","😽","🙀","😿","😾","🫣","🫡","🫢","🫥","❤️","🧡","💛","💚",
-    "💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟",
-    "💌","🔥","✨","⚡","💥","💫","💦","💨","🕳️","💣","💬","👁️‍🗨️","🗨️","🗯️",
-    "💭","💤","👍","👎","👏","🙌","👐","🤲","🙏","🤝","🤞","✌️","🤟","🤘","👌",
-    "👈","👉","👆","🖕","👇","☝️","✋","🤚","🖐️","🖖","👋","🤙","💪","🦾","🦵",
-    "🦿","🦶","👂","🦻","👃","🧠","🫀","🫁","🦷","🦴","👀","👁️","👅","👄","💋",
-    "🩸","🫦","🫧","🫠"
+    "😍","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤓","😎","🥳","😏",
+    "😞","😔","😟","😕","🙁","☹️","😣","😖","😫","🥺","😢","😭","😤","😠","😡",
+    "🤬","🤯","😳","🥵","🥶","😱","😰","😥","😓","🤗","🤔","🤭","🤫","🤥","😶",
+    "😐","😑","😬","🙄","😯","😦","😧","😮","😲","🥱","😴","🤤","😪","😵","🤐",
+    "🤢","🤮","🤧","😷","🤒","🤕","🤑","🤠","😈","👿","👹","👺","💀","👻","👽",
+    "👾","🤖","💩","😺","😸","😹","😻","😼","😽","🙀","😿","😾","🫣","🫡","🫢",
+    "❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗",
+    "💖","💘","💝","💟","💌","🔥","✨","⚡","💥","💫","💦","💨","🕳️","💣","💬"
   ];
 
   emojis.forEach((e) => {
@@ -208,6 +209,7 @@ if (emojiBtn && emojiPicker && input) {
     span.addEventListener("click", () => {
       input.value += e;
       emojiPicker.style.display = "none";
+      input.focus();
     });
     emojiPicker.appendChild(span);
   });
@@ -224,7 +226,7 @@ if (emojiBtn && emojiPicker && input) {
   });
 }
 
-// ========================== Scroll Fix ==========================
+// ========================== SCROLL & INPUT ADJUST ==========================
 window.addEventListener("load", () => {
   const chatContainer = document.getElementById("show");
   const chatBox = document.querySelector(".chat");
