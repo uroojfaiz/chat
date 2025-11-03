@@ -43,7 +43,6 @@ const emojiBtn = document.getElementById("emoji-btn");
 const emojiPicker = document.getElementById("emoji-picker");
 const qrToggle = document.getElementById("qr-toggle");
 const qrContainer = document.getElementById("qr-container");
-const themeBtn = document.getElementById("theme");
 const logoutBtn = document.getElementById("logout");
 const loginBtn = document.getElementById("login-button");
 const signCreateBtn = document.getElementById("sign-create");
@@ -120,9 +119,16 @@ usernameSetBtn?.addEventListener("click", () => {
 });
 
 // ========================== Theme (global) ==========================
-themeBtn?.addEventListener("click", () => {
-  const color = "#" + Math.floor(Math.random() * 16777215).toString(16);
-  document.body.style.backgroundColor = color;
+document.getElementById("theme")?.addEventListener("click", () => {
+  // Random colors for gradient
+  const color1 = "#" + Math.floor(Math.random() * 16777215).toString(16);
+  const color2 = "#" + Math.floor(Math.random() * 16777215).toString(16);
+
+  // Apply gradient inline
+  document.body.style.background = linear-gradient(`135deg, ${color1}, ${color2}`);
+
+  // Stop animation so theme color shows properly
+  document.body.style.animation = "none";
 });
 
 // ========================== QR Code ==========================

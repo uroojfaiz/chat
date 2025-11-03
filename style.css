@@ -7,9 +7,9 @@
 }
 
 body {
-  background: linear-gradient(135deg, #012f30, #045a5d, #012f30);
+  background: linear-gradient(135deg, #012f30, #045a5d, #012f30); /* default gradient */
   background-size: 400% 400%;
-  animation: gradientMove 10s infinite alternate;
+  animation: gradientMove 10s infinite alternate; /* default animation */
   color: white;
   height: 100vh;
   display: flex;
