@@ -257,3 +257,30 @@ h1 {
   align-self: flex-end;
   border-radius: 15px 15px 0 15px;
 }
+
+.chat-message {
+  max-width: 70%;
+  margin: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  word-break: break-word;
+  clear: both;
+}
+
+.chat-message.self {
+  background: #DCF8C6;
+  float: right;
+  text-align: right;
+}
+
+.chat-message.other {
+  background: #FFFFFF;
+  float: left;
+  text-align: left;
+  color: #000;
+}
+
+.msg-actions {
+  display: inline-block;
+  margin-left: 6px;
+}
