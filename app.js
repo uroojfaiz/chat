@@ -9,14 +9,19 @@ import {
   onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 import {
-  getDatabase,
-  ref,
-  push,
-  onChildAdded,
-  remove,
-  update,
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+  getFirestore,
+  collection,
+  addDoc,
+  serverTimestamp,
+  onSnapshot,
+  orderBy,
+  query,
+  deleteDoc,
+  doc,
+  updateDoc,
+} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
+// ========================== Firebase Config ==========================
 const firebaseConfig = {
   apiKey: "AIzaSyAuB_ufAiG-xLCENo55S3vGgCOklsxMiKY",
   authDomain: "real-time-database-6f10c.firebaseapp.com",
@@ -27,22 +32,22 @@ const firebaseConfig = {
   measurementId: "G-STZ7XGVBHH",
 };
 
+// ========================== Initialization ==========================
 const app = initializeApp(firebaseConfig);
 getAnalytics(app);
 const auth = getAuth(app);
-const db = getDatabase(app);
+const db = getFirestore(app);
 
-// ========================== User & Auth ==========================
-const currentUsername = localStorage.getItem("username") || "Unknown";
+// ========================== AUTH SYSTEM ==========================
 
-// SIGNUP
+// SIGN UP
 document.getElementById("sign-create")?.addEventListener("click", () => {
-  const email = document.getElementById("sign-email").value;
-  const password = document.getElementById("sign-password").value;
+  const email = document.getElementById("sign-email").value.trim();
+  const password = document.getElementById("sign-password").value.trim();
 
   createUserWithEmailAndPassword(auth, email, password)
     .then(() => {
-      alert("User created successfully");
+      alert("✅ Account created successfully!");
       window.location.href = "user.html";
     })
     .catch((error) => alert(error.message));
@@ -50,12 +55,12 @@ document.getElementById("sign-create")?.addEventListener("click", () => {
 
 // LOGIN
 document.getElementById("login-button")?.addEventListener("click", () => {
-  const email = document.getElementById("login-email").value;
-  const password = document.getElementById("login-password").value;
+  const email = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value.trim();
 
   signInWithEmailAndPassword(auth, email, password)
     .then(() => {
-      alert("User logged in successfully");
+      alert("✅ Logged in successfully!");
       window.location.href = "user.html";
     })
     .catch((error) => alert(error.message));
@@ -65,31 +70,19 @@ document.getElementById("login-button")?.addEventListener("click", () => {
 document.getElementById("logout-button")?.addEventListener("click", () => {
   signOut(auth)
     .then(() => {
-      alert("User logged out successfully");
+      alert("👋 Logged out successfully!");
       window.location.href = "index.html";
     })
     .catch((error) => alert(error.message));
 });
 
-//onAuthStateChanged
-
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-   console.log("User is logged in:", user.email);
-  } else {
-   console.log("No user is logged in.");
-  }
-});
-
-
-// ========================== THEME TOGGLE ==========================
+// ========================== THEME CHANGE ==========================
 function getRandomColor() {
   const letters = "0123456789ABCDEF";
   let color = "#";
   for (let i = 0; i < 6; i++) color += letters[Math.floor(Math.random() * 16)];
   return color;
 }
-
 document.getElementById("theme")?.addEventListener("click", () => {
   document.body.style.backgroundColor = getRandomColor();
 });
@@ -104,7 +97,6 @@ if (qrToggle && qrContainer) {
       qrContainer.style.display === "flex" ? "none" : "flex";
   });
 }
-
 const script = document.createElement("script");
 script.src = "https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js";
 script.onload = () => {
@@ -119,107 +111,108 @@ script.onload = () => {
 };
 document.head.appendChild(script);
 
-// ========================== USERNAME ==========================
-document.getElementById("username-set")?.addEventListener("click", () => {
-  const username = document.getElementById("username").value.trim();
-  if (username) {
-    localStorage.setItem("username", username);
-    alert("Username saved!");
-    window.location.href = "chat.html";
+// ========================== CHAT SYSTEM ==========================
+const show = document.getElementById("show");
+const input = document.getElementById("message-input");
+const sendButton = document.getElementById("send-button");
+
+let currentUserEmail = null;
+
+// User Auth Check
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUserEmail = user.email;
+    loadMessages();
   } else {
-    alert("Please enter a valid username.");
+    currentUserEmail = null;
   }
 });
 
-// ========================== CHAT SYSTEM ==========================
-const chatDiv = document.getElementById("show");
-const messagesRef = ref(db, "messages");
-const inputField = document.getElementById("message-input");
-const sendBtn = document.getElementById("send-button");
+// Load Messages from Firestore
+function loadMessages() {
+  const q = query(collection(db, "messages"), orderBy("timestamp"));
+  onSnapshot(q, (snapshot) => {
+    show.innerHTML = "";
+    snapshot.forEach((docItem) => {
+      const msg = docItem.data();
+      const id = docItem.id;
 
-// SEND MESSAGE
-sendBtn?.addEventListener("click", sendMessage);
-inputField?.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendMessage();
-});
+      const div = document.createElement("div");
+      div.classList.add("chat-message");
+      if (msg.email === currentUserEmail) div.classList.add("self");
 
-function sendMessage() {
-  const msg = inputField.value.trim();
-  if (!msg) return;
+      div.innerHTML = `
+        <div class="msg-header">
+          <b>${msg.email.split("@")[0]}</b> • ${msg.time || ""}
+          ${
+            msg.email === currentUserEmail
+              ? `<div class="msg-actions">
+                   <button class="edit-btn" title="Edit">✏</button>
+                   <button class="delete-btn" title="Delete">🗑</button>
+                 </div>`
+              : ""
+          }
+        </div>
+        <div class="msg-body">${msg.text}</div>
+      `;
 
-  push(messagesRef, {
-    username: currentUsername,
-    message: msg,
-    time: new Date().toLocaleTimeString(),
+      // Delete Message
+      div.querySelector(".delete-btn")?.addEventListener("click", async () => {
+        await deleteDoc(doc(db, "messages", id));
+      });
+
+      // Edit Message
+      div.querySelector(".edit-btn")?.addEventListener("click", async () => {
+        const newText = prompt("✏ Edit your message:", msg.text);
+        if (newText && newText.trim() !== "") {
+          await updateDoc(doc(db, "messages", id), { text: newText });
+        }
+      });
+
+      show.appendChild(div);
+      show.scrollTop = show.scrollHeight;
+    });
   });
-
-  inputField.value = "";
-  scrollToBottom();
 }
 
-// SHOW MESSAGES
-if (chatDiv) {
-  onChildAdded(messagesRef, (data) => {
-    const msg = data.val();
-    const isMine = msg.username === currentUsername;
+// Send Message
+sendButton?.addEventListener("click", sendMsg);
+input?.addEventListener("keypress", (e) => e.key === "Enter" && sendMsg());
 
-    const msgDiv = document.createElement("div");
-    msgDiv.classList.add("chat-message");
-    if (isMine) msgDiv.classList.add("self");
-    msgDiv.dataset.key = data.key;
+async function sendMsg() {
+  const text = input.value.trim();
+  if (text === "" || !currentUserEmail) return;
 
-    msgDiv.innerHTML = `
-      <div class="msg-header">
-        <span><b>${msg.username}</b> • ${msg.time}</span>
-        ${
-          isMine
-            ? `<div class="msg-actions">
-                <button class="edit-btn" title="Edit">✏</button>
-                <button class="delete-btn" title="Delete">🗑</button>
-              </div>`
-            : ""
-        }
-      </div>
-      <div class="msg-text">${msg.message}</div>
-    `;
-
-    chatDiv.appendChild(msgDiv);
-    scrollToBottom();
-
-    // DELETE
-    msgDiv.querySelector(".delete-btn")?.addEventListener("click", () => {
-      remove(ref(db, `messages/${data.key}`));
-      msgDiv.remove();
-    });
-
-    // EDIT
-    msgDiv.querySelector(".edit-btn")?.addEventListener("click", () => {
-      const newText = prompt("Edit your message:", msg.message);
-      if (newText && newText.trim() !== "") {
-        update(ref(db, `messages/${data.key}`), { message: newText });
-        msgDiv.querySelector(".msg-text").textContent = newText;
-      }
-    });
+  await addDoc(collection(db, "messages"), {
+    email: currentUserEmail,
+    text,
+    timestamp: serverTimestamp(),
+    time: new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
   });
+
+  input.value = "";
+  show.scrollTop = show.scrollHeight;
 }
 
 // ========================== EMOJI PICKER ==========================
 const emojiBtn = document.getElementById("emoji-btn");
 const emojiPicker = document.getElementById("emoji-picker");
 
-if (emojiBtn && emojiPicker && inputField) {
+if (emojiBtn && emojiPicker && input) {
   const emojis = [
     "😀","😃","😄","😁","😆","😂","🤣","😊","😍","😘","😜","🤔",
     "😎","😢","😭","😡","😇","🥰","😴","😋","🙄","🤩","🤗","🥳",
     "👍","👎","🙏","👏","🔥","💯","❤","💔","✨","🌟","😻","🤖"
   ];
-
   emojis.forEach((e) => {
     const span = document.createElement("span");
     span.textContent = e;
     span.style.cursor = "pointer";
     span.addEventListener("click", () => {
-      inputField.value += e;
+      input.value += e;
       emojiPicker.style.display = "none";
     });
     emojiPicker.appendChild(span);
@@ -237,111 +230,18 @@ if (emojiBtn && emojiPicker && inputField) {
   });
 }
 
-// ========================== SCROLL CONTROL (JS ONLY) ==========================
-const chatContainer = document.getElementById("show");
-
-function scrollToBottom() {
-  if (chatContainer)
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-
-function enableScrollOnOverflow() {
-  if (!chatContainer) return;
-  const observer = new MutationObserver(() => {
-    const overflow = chatContainer.scrollHeight > chatContainer.clientHeight;
-    chatContainer.style.overflowY = overflow ? "auto" : "hidden";
-    scrollToBottom();
-  });
-  observer.observe(chatContainer, { childList: true, subtree: true });
-}
-
-window.addEventListener("load", enableScrollOnOverflow);
-
-// ✅ Proper scroll fix without overlapping input
-window.addEventListener("load", () => {
+// ========================== SCROLL FIX ==========================
+function adjustChatHeight() {
+  const chatBox = document.querySelector(".chat");
+  const inputArea = document.querySelector(".input-area");
   const chatContainer = document.getElementById("show");
-  if (chatContainer) {
-    // Automatically calculate height to fit above input area
-    const chatBox = document.querySelector(".chat");
-    const inputArea = document.querySelector(".input-area");
 
-    const updateScrollArea = () => {
-      const chatBoxRect = chatBox.getBoundingClientRect();
-      const inputHeight = inputArea.offsetHeight;
-      const availableHeight = chatBoxRect.height - inputHeight - 30; // some margin
-      chatContainer.style.maxHeight = `${availableHeight}px`;
-      chatContainer.style.overflowY = "auto";
-    };
-
-    // run once and on resize
-    updateScrollArea();
-    window.addEventListener("resize", updateScrollArea);
+  if (chatBox && inputArea && chatContainer) {
+    const availableHeight =
+      chatBox.getBoundingClientRect().height - inputArea.offsetHeight - 30;
+    chatContainer.style.maxHeight = `${availableHeight}px`;
+    chatContainer.style.overflowY = "auto";
   }
-});
-
-import { auth, db } from "./firebaseConfig.js"; // tumhara firebase config
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-  onSnapshot,
-  orderBy,
-  query
-} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
-
-const show = document.getElementById("show");
-const input = document.getElementById("message-input");
-const sendButton = document.getElementById("send-button");
-
-let currentUserEmail = null;
-
-// 🔹 User ka email le lo (jab login hota hai)
-auth.onAuthStateChanged((user) => {
-  if (user) {
-    currentUserEmail = user.email;
-    loadMessages();
-  }
-});
-
-function loadMessages() {
-  const q = query(collection(db, "messages"), orderBy("timestamp"));
-  onSnapshot(q, (snapshot) => {
-    show.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const msg = doc.data();
-      const div = document.createElement("div");
-
-      // 🔹 Check karo: agar ye current user ka message hai to right side
-      if (msg.email === currentUserEmail) {
-        div.classList.add("chat-message", "self");
-      } else {
-        div.classList.add("chat-message");
-      }
-
-      div.innerHTML = `
-        <div class="msg-header">
-          <b>${msg.email.split("@")[0]}</b> • 
-          ${msg.time || ""}
-        </div>
-        <div class="msg-body">${msg.text}</div>
-      `;
-      show.appendChild(div);
-      show.scrollTop = show.scrollHeight; // Auto scroll to bottom
-    });
-  });
 }
-
-// 🔹 Message bhejna
-sendButton.addEventListener("click", async () => {
-  const text = input.value.trim();
-  if (text === "" || !currentUserEmail) return;
-
-  await addDoc(collection(db, "messages"), {
-    email: currentUserEmail,
-    text,
-    timestamp: serverTimestamp(),
-    time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-  });
-
-  input.value = "";
-});
+window.addEventListener("load", adjustChatHeight);
+window.addEventListener("resize", adjustChatHeight);
