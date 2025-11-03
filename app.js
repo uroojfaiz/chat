@@ -1,7 +1,7 @@
 // ========================== Firebase Setup ==========================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
-import { getDatabase, ref, push, onChildAdded, remove, update } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+import { getDatabase, ref, push, onChildAdded, remove, update, set, onChildChanged } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
 import { collection, addDoc, serverTimestamp, onSnapshot, orderBy, query } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // ========================== Firebase Config ==========================
@@ -85,8 +85,8 @@ onChildAdded(messagesRef, data => {
   const msg = data.val();
   const msgDiv = document.createElement("div");
   msgDiv.classList.add("chat-message");
-  if (msg.email === currentUserEmail) msgDiv.classList.add("self");
-  else msgDiv.classList.add("other");
+  if (msg.email === currentUserEmail) msgDiv.classList.add("self"); // Right
+  else msgDiv.classList.add("other"); // Left
   msgDiv.dataset.key = data.key;
 
   msgDiv.innerHTML = `
@@ -123,6 +123,48 @@ onChildAdded(messagesRef, data => {
   });
 });
 
+// ========================== Typing Indicator ==========================
+const typingRef = ref(dbRT, "typing/" + currentUsername);
+const typingIndicator = document.getElementById("typing-indicator");
+let typingTimeout;
+
+inputField?.addEventListener("input", () => {
+  if (!currentUsername) return;
+  set(typingRef, { typing: true });
+
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    set(typingRef, { typing: false });
+  }, 1200);
+});
+
+const allTypingRef = ref(dbRT, "typing");
+onChildChanged(allTypingRef, snapshot => {
+  const user = snapshot.key;
+  const data = snapshot.val();
+  if (user === currentUsername) return;
+  if (data.typing) {
+    showTyping(user);
+  } else {
+    hideTyping();
+  }
+});
+
+let dotsInterval;
+function showTyping(user) {
+  clearInterval(dotsInterval);
+  let dots = 0;
+  typingIndicator.textContent = `${user} is typing`;
+  dotsInterval = setInterval(() => {
+    dots = (dots + 1) % 4;
+    typingIndicator.textContent = `${user} is typing${".".repeat(dots)}`;
+  }, 400);
+}
+function hideTyping() {
+  clearInterval(dotsInterval);
+  typingIndicator.textContent = "";
+}
+
 // ========================== Scroll Control ==========================
 function scrollToBottom() { if (chatDiv) chatDiv.scrollTop = chatDiv.scrollHeight; }
 window.addEventListener("load", () => {
@@ -154,14 +196,12 @@ if (emojiBtn && emojiPicker && inputField) {
     "🔥","✨","⚡","💥","💫","💦","💨","🕳️","💣","💬","👁️‍🗨️","🗨️","🗯️","💭",
     "💤","👍","👎","👏","🙌","👐","🤲","🙏","🤝","🤞","✌️","🤟","🤘","👌","👈",
     "👉","👆","🖕","👇","☝️","✋","🤚","🖐️","🖖","👋","🤙","💪","🦾","🦵","🦿",
-    "🦶","👂","🦻","👃","🧠","🫀","🫁","🦷","🦴","👀","👁️","👅","👄","💋","🩸",
-    "🫦","🫧","🫠","🫤","🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁",
-    "🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺",
-    "🐗","🐴","🦄","🐝","🐛","🦋","🐌","🐞","🐜","🪲","🪳","🦟","🦗","🕷️","🕸️",
-    "🦂","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬",
-    "🐳","🐋","🦈","🐊","🐅","🐆","🦓","🦍","🦧","🐘","🦛","🦏","🐪","🐫","🦙",
-    "🦒","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦌","🐐","🦃","🐓","🐇","🦝","🦨",
-    "🦡","🦦","🦥","🐁","🐀","🐿️","🦔"
+    "🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐷","🐸","🐵",
+    "🍎","🍊","🍋","🍌","🍉","🍇","🍓","🍒","🥭","🍍","🥝","🍅","🥥","🥑","🥦",
+    "🌸","🌼","🌻","🌺","🌹","🌷","🌵","🌴","🌲","🌳","🌾","☘️","🍀","🍁","🍂",
+    "🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑","🚒","🚚","🚜","🚲","🏍️","🛵","🚀",
+    "✈️","🛫","🛬","🛰️","🚁","🛶","⛵","🚢","⚓","🚧","🏠","🏡","🏢","🏣","🏥",
+    "🏦","🏫","🏪","🏩","💒","🏛️","⛪","🕌","🕍","⛩️","🕋"
   ];
 
   emojis.forEach(e => {
