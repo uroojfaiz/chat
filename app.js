@@ -1,25 +1,8 @@
 // ========================== Firebase Setup ==========================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  serverTimestamp,
-  onSnapshot,
-  orderBy,
-  query,
-  deleteDoc,
-  updateDoc,
-  doc,
-} from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
-import QRCode from "https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+import { getDatabase, ref, push, onChildAdded, remove, update } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js";
+import { collection, addDoc, serverTimestamp, onSnapshot, orderBy, query } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 // ========================== Firebase Config ==========================
 const firebaseConfig = {
@@ -32,193 +15,182 @@ const firebaseConfig = {
   measurementId: "G-STZ7XGVBHH",
 };
 
-// ========================== Initialize Firebase ==========================
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const dbRT = getDatabase(app); // Realtime DB
+const chatDiv = document.getElementById("show");
+const inputField = document.getElementById("message-input");
+const sendBtn = document.getElementById("send-button");
 
-// ========================== Auth Logic ==========================
-document.getElementById("login-button")?.addEventListener("click", () => {
-  const email = document.getElementById("login-email").value;
-  const password = document.getElementById("login-password").value;
+let currentUserEmail = null;
+let currentUsername = localStorage.getItem("username") || "Unknown";
 
-  signInWithEmailAndPassword(auth, email, password)
-    .then(() => {
-      alert("Login successful!");
-      window.location.href = "user.html";
-    })
-    .catch((err) => alert(err.message));
-});
-
+// ========================== Auth ==========================
 document.getElementById("sign-create")?.addEventListener("click", () => {
   const email = document.getElementById("sign-email").value;
   const password = document.getElementById("sign-password").value;
-
   createUserWithEmailAndPassword(auth, email, password)
-    .then(() => {
-      alert("Account created successfully!");
-      window.location.href = "user.html";
-    })
-    .catch((err) => alert(err.message));
+    .then(() => { alert("User created"); window.location.href = "user.html"; })
+    .catch(err => alert(err.message));
+});
+
+document.getElementById("login-button")?.addEventListener("click", () => {
+  const email = document.getElementById("login-email").value;
+  const password = document.getElementById("login-password").value;
+  signInWithEmailAndPassword(auth, email, password)
+    .then(() => { alert("Logged in"); window.location.href = "user.html"; })
+    .catch(err => alert(err.message));
 });
 
 document.getElementById("logout-button")?.addEventListener("click", () => {
-  signOut(auth).then(() => {
-    alert("Logged out successfully!");
-    window.location.href = "index.html";
-  });
+  signOut(auth).then(() => { alert("Logged out"); window.location.href = "index.html"; });
 });
 
-// ========================== Username Setup ==========================
+onAuthStateChanged(auth, user => {
+  if (user) currentUserEmail = user.email;
+  else currentUserEmail = null;
+});
+
+// ========================== Username ==========================
 document.getElementById("username-set")?.addEventListener("click", () => {
   const username = document.getElementById("username").value.trim();
-  if (username) {
-    localStorage.setItem("username", username);
-    alert("Username saved!");
-    window.location.href = "chat.html";
-  } else {
-    alert("Please enter a valid username.");
-  }
-});
-
-// ========================== Chat Logic ==========================
-const show = document.getElementById("show");
-const input = document.getElementById("message-input");
-const sendButton = document.getElementById("send-button");
-
-let currentUserEmail = null;
-
-// ========================== Auth State ==========================
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUserEmail = user.email;
-
-    // Generate QR code using username
-    const qrDiv = document.getElementById("qrcode");
-    const username = localStorage.getItem("username") || user.email;
-    if (qrDiv) {
-      QRCode.toCanvas(qrDiv, username, (error) => {
-        if (error) console.error(error);
-      });
-    }
-
-    if (!username) {
-      alert("Please set your username first!");
-      window.location.href = "user.html";
-    } else {
-      loadMessages();
-    }
-
-    // Theme toggle
-    const themeBtn = document.getElementById("theme-btn");
-    const body = document.body;
-    const savedTheme = localStorage.getItem("theme") || "light";
-    body.setAttribute("data-theme", savedTheme);
-
-    themeBtn?.addEventListener("click", () => {
-      const current = body.getAttribute("data-theme");
-      const newTheme = current === "light" ? "dark" : "light";
-      body.setAttribute("data-theme", newTheme);
-      localStorage.setItem("theme", newTheme);
-    });
-
-  } else {
-    currentUserEmail = null;
-    if (!window.location.pathname.endsWith("index.html")) {
-      window.location.href = "index.html";
-    }
-  }
+  if (username) { localStorage.setItem("username", username); alert("Username saved"); window.location.href = "chat.html"; }
+  else alert("Enter a valid username");
 });
 
 // ========================== Send Message ==========================
-sendButton?.addEventListener("click", sendMessage);
-input?.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") sendMessage();
-});
+sendBtn?.addEventListener("click", sendMessage);
+inputField?.addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
 
-async function sendMessage() {
-  const text = input.value.trim();
-  const username = localStorage.getItem("username");
-  if (!text || !currentUserEmail || !username) return;
+function sendMessage() {
+  const text = inputField.value.trim();
+  if (!text || !currentUserEmail) return;
 
-  input.value = "";
-  input.focus();
-
-  await addDoc(collection(db, "messages"), {
+  // Push to Realtime DB
+  const messagesRef = ref(dbRT, "messages");
+  push(messagesRef, {
+    username: currentUsername,
     email: currentUserEmail,
-    username,
     text,
-    timestamp: serverTimestamp(),
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
   });
+
+  inputField.value = "";
+  scrollToBottom();
 }
 
 // ========================== Load Messages ==========================
-function loadMessages() {
-  const q = query(collection(db, "messages"), orderBy("timestamp"));
-  onSnapshot(q, (snapshot) => {
-    show.innerHTML = "";
-    snapshot.forEach((docSnap) => {
-      const msg = docSnap.data();
-      const id = docSnap.id;
+const messagesRef = ref(dbRT, "messages");
+onChildAdded(messagesRef, data => {
+  const msg = data.val();
+  const msgDiv = document.createElement("div");
+  msgDiv.classList.add("chat-message");
+  if (msg.email === currentUserEmail) msgDiv.classList.add("self");
+  else msgDiv.classList.add("other");
+  msgDiv.dataset.key = data.key;
 
-      const div = document.createElement("div");
-      div.classList.add("chat-message");
+  msgDiv.innerHTML = `
+    <div class="msg-header">
+      <b>${msg.username}</b> • ${msg.time}
+      ${
+        msg.email === currentUserEmail
+          ? `<div class="msg-actions">
+              <button class="edit-btn">✏️</button>
+              <button class="delete-btn">🗑️</button>
+            </div>`
+          : ""
+      }
+    </div>
+    <div class="msg-text">${msg.text}</div>
+  `;
 
-      // Right for current user, left for others
-      if (msg.email === currentUserEmail) div.classList.add("self");
-      else div.classList.add("other");
+  chatDiv.appendChild(msgDiv);
+  scrollToBottom();
 
-      div.innerHTML = `
-        <div class="msg-header">
-          <b>${msg.username || msg.email.split("@")[0]}</b> • ${msg.time || ""}
-          ${
-            msg.email === currentUserEmail
-              ? `<span class="msg-actions">
-                  <button class="edit-btn" title="Edit">✏️</button>
-                  <button class="delete-btn" title="Delete">🗑️</button>
-                </span>`
-              : ""
-          }
-        </div>
-        <div class="msg-body">${msg.text}</div>
-      `;
-
-      // Edit
-      const editBtn = div.querySelector(".edit-btn");
-      editBtn?.addEventListener("click", async () => {
-        const newText = prompt("Edit your message:", msg.text);
-        if (newText && newText.trim() !== "") {
-          await updateDoc(doc(db, "messages", id), { text: newText });
-        }
-      });
-
-      // Delete
-      const delBtn = div.querySelector(".delete-btn");
-      delBtn?.addEventListener("click", async () => {
-        if (confirm("Delete this message?")) {
-          await deleteDoc(doc(db, "messages", id));
-        }
-      });
-
-      show.appendChild(div);
-    });
-
-    show.scrollTop = show.scrollHeight;
+  // Edit
+  msgDiv.querySelector(".edit-btn")?.addEventListener("click", () => {
+    const newText = prompt("Edit your message:", msg.text);
+    if (newText && newText.trim() !== "") {
+      update(ref(dbRT, `messages/${data.key}`), { text: newText });
+      msgDiv.querySelector(".msg-text").textContent = newText;
+    }
   });
-}
+
+  // Delete
+  msgDiv.querySelector(".delete-btn")?.addEventListener("click", () => {
+    remove(ref(dbRT, `messages/${data.key}`));
+    msgDiv.remove();
+  });
+});
+
+// ========================== Scroll Control ==========================
+function scrollToBottom() { if (chatDiv) chatDiv.scrollTop = chatDiv.scrollHeight; }
+window.addEventListener("load", () => {
+  const chatBox = document.querySelector(".chat");
+  const inputArea = document.querySelector(".input-area");
+  const updateScrollArea = () => {
+    const availableHeight = chatBox.clientHeight - inputArea.offsetHeight - 20;
+    chatDiv.style.maxHeight = `${availableHeight}px`;
+    chatDiv.style.overflowY = "auto";
+  };
+  updateScrollArea();
+  window.addEventListener("resize", updateScrollArea);
+});
 
 // ========================== Emoji Picker ==========================
 const emojiBtn = document.getElementById("emoji-btn");
 const emojiPicker = document.getElementById("emoji-picker");
-
-if (emojiBtn && emojiPicker && input) {
+if (emojiBtn && emojiPicker && inputField) {
   const emojis = [
     "😀","😃","😄","😁","😆","😅","😂","🤣","🥲","☺️","😊","😇","🙂","🙃","😉",
     "😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓",
     "😎","🥸","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫",
-    "🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰",
-    "😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧",
-    "😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕",
-    "🤑","🤠","😈","👿","👹","👺","💀","☠️","👻","👽","👾","🤖","💩","😺","😸",
-    "😹","😻","😼","😽","🙀","
+    "🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰","😥",
+    "😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧","😮",
+    "😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕","🤑",
+    "🤠","😈","👿","👹","👺","💀","☠️","👻","👽","👾","🤖","💩","😺","😸","😹",
+    "😻","😼","😽","🙀","😿","😾","🫣","🫡","🫢","🫥","❤️","🧡","💛","💚","💙",
+    "💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟","💌",
+    "🔥","✨","⚡","💥","💫","💦","💨","🕳️","💣","💬","👁️‍🗨️","🗨️","🗯️","💭",
+    "💤","👍","👎","👏","🙌","👐","🤲","🙏","🤝","🤞","✌️","🤟","🤘","👌","👈",
+    "👉","👆","🖕","👇","☝️","✋","🤚","🖐️","🖖","👋","🤙","💪","🦾","🦵","🦿",
+    "🦶","👂","🦻","👃","🧠","🫀","🫁","🦷","🦴","👀","👁️","👅","👄","💋","🩸",
+    "🫦","🫧","🫠","🫤","🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁",
+    "🐮","🐷","🐸","🐵","🐔","🐧","🐦","🐤","🐣","🐥","🦆","🦅","🦉","🦇","🐺",
+    "🐗","🐴","🦄","🐝","🐛","🦋","🐌","🐞","🐜","🪲","🪳","🦟","🦗","🕷️","🕸️",
+    "🦂","🐢","🐍","🦎","🦖","🦕","🐙","🦑","🦐","🦞","🦀","🐡","🐠","🐟","🐬",
+    "🐳","🐋","🦈","🐊","🐅","🐆","🦓","🦍","🦧","🐘","🦛","🦏","🐪","🐫","🦙",
+    "🦒","🐃","🐂","🐄","🐎","🐖","🐏","🐑","🦌","🐐","🦃","🐓","🐇","🦝","🦨",
+    "🦡","🦦","🦥","🐁","🐀","🐿️","🦔"
+  ];
+
+  emojis.forEach(e => {
+    const span = document.createElement("span");
+    span.textContent = e;
+    span.style.cursor = "pointer";
+    span.addEventListener("click", () => { inputField.value += e; emojiPicker.style.display = "none"; });
+    emojiPicker.appendChild(span);
+  });
+
+  emojiBtn.addEventListener("click", e => { e.stopPropagation(); emojiPicker.style.display = emojiPicker.style.display === "block" ? "none" : "block"; });
+  document.addEventListener("click", e => { if (!emojiBtn.contains(e.target) && !emojiPicker.contains(e.target)) emojiPicker.style.display = "none"; });
+}
+
+// ========================== Theme Toggle ==========================
+document.getElementById("theme")?.addEventListener("click", () => {
+  const color = "#" + Math.floor(Math.random()*16777215).toString(16);
+  document.body.style.backgroundColor = color;
+});
+
+// ========================== QR Code ==========================
+const qrToggle = document.getElementById("qr-toggle");
+const qrContainer = document.getElementById("qr-container");
+if (qrToggle && qrContainer) {
+  qrToggle.addEventListener("click", () => { qrContainer.style.display = qrContainer.style.display === "flex" ? "none" : "flex"; });
+  const script = document.createElement("script");
+  script.src = "https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js";
+  script.onload = () => {
+    QRCode.toCanvas(document.getElementById("qrcode"), currentUsername, { width: 120, margin: 2 }, err => { if (err) console.error(err); });
+  };
+  document.head.appendChild(script);
+}
