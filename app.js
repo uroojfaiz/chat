@@ -75,6 +75,17 @@ document.getElementById("logout-button")?.addEventListener("click", () => {
     })
     .catch((error) => alert(error.message));
 });
+// ========================== USERNAME ==========================
+document.getElementById("username-set")?.addEventListener("click", () => {
+  const username = document.getElementById("username").value.trim();
+  if (username) {
+    localStorage.setItem("username", username);
+    alert("Username saved!");
+    window.location.href = "chat.html";
+  } else {
+    alert("Please enter a valid username.");
+  }
+});
 
 // ========================== THEME CHANGE ==========================
 function getRandomColor() {
