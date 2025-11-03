@@ -1,4 +1,4 @@
-    // ========================== Firebase Setup ==========================
+// ========================== Firebase Setup ==========================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import {
   getAuth,
@@ -17,7 +17,7 @@ import {
   query,
   deleteDoc,
   updateDoc,
-  doc
+  doc,
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
 // ========================== Firebase Config ==========================
@@ -44,7 +44,7 @@ document.getElementById("login-button")?.addEventListener("click", () => {
   signInWithEmailAndPassword(auth, email, password)
     .then(() => {
       alert("Login successful!");
-      window.location.href = "chat.html";
+      window.location.href = "username.html";
     })
     .catch((err) => alert(err.message));
 });
@@ -56,7 +56,7 @@ document.getElementById("sign-create")?.addEventListener("click", () => {
   createUserWithEmailAndPassword(auth, email, password)
     .then(() => {
       alert("Account created successfully!");
-      window.location.href = "chat.html";
+      window.location.href = "username.html";
     })
     .catch((err) => alert(err.message));
 });
@@ -66,6 +66,18 @@ document.getElementById("logout-button")?.addEventListener("click", () => {
     alert("Logged out successfully!");
     window.location.href = "index.html";
   });
+});
+
+// ========================== USERNAME ==========================
+document.getElementById("username-set")?.addEventListener("click", () => {
+  const username = document.getElementById("username").value.trim();
+  if (username) {
+    localStorage.setItem("username", username);
+    alert("Username saved!");
+    window.location.href = "chat.html";
+  } else {
+    alert("Please enter a valid username.");
+  }
 });
 
 // ========================== Chat Logic ==========================
@@ -78,9 +90,17 @@ let currentUserEmail = null;
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUserEmail = user.email;
-    loadMessages();
+
+    const username = localStorage.getItem("username");
+    if (!username) {
+      alert("Please set your username first!");
+      window.location.href = "username.html";
+    } else {
+      loadMessages();
+    }
   } else {
     currentUserEmail = null;
+    window.location.href = "index.html";
   }
 });
 
@@ -92,13 +112,15 @@ input?.addEventListener("keypress", (e) => {
 
 async function sendMessage() {
   const text = input.value.trim();
-  if (!text || !currentUserEmail) return;
+  const username = localStorage.getItem("username");
+  if (!text || !currentUserEmail || !username) return;
 
-  input.value = ""; // clear input
+  input.value = "";
   input.focus();
 
   await addDoc(collection(db, "messages"), {
     email: currentUserEmail,
+    username,
     text,
     timestamp: serverTimestamp(),
     time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -120,15 +142,13 @@ function loadMessages() {
 
       div.innerHTML = `
         <div class="msg-header">
-          <b>${msg.email.split("@")[0]}</b> • ${msg.time || ""}
+          <b>${msg.username || msg.email.split("@")[0]}</b> • ${msg.time || ""}
           ${
             msg.email === currentUserEmail
-              ? `
-              <span class="msg-actions">
-                <button class="edit-btn" title="Edit">✏️</button>
-                <button class="delete-btn" title="Delete">🗑️</button>
-              </span>
-            `
+              ? `<span class="msg-actions">
+                  <button class="edit-btn" title="Edit">✏️</button>
+                  <button class="delete-btn" title="Delete">🗑️</button>
+                </span>`
               : ""
           }
         </div>
@@ -164,7 +184,23 @@ const emojiBtn = document.getElementById("emoji-btn");
 const emojiPicker = document.getElementById("emoji-picker");
 
 if (emojiBtn && emojiPicker && input) {
-  const emojis = ["😀","😂","🤣","😍","😘","😎","😇","😢","😭","😡","😋","🥳","👍","🙏","👏","🔥","❤","❤️","😭","🙏🏻","🫂","🙈","💕","🤔","🥹","😛"];
+  const emojis = [
+    "😀","😃","😄","😁","😆","😅","😂","🤣","🥲","☺️","😊","😇","🙂","🙃","😉",
+    "😌","😍","🥰","😘","😗","😙","😚","😋","😛","😝","😜","🤪","🤨","🧐","🤓",
+    "😎","🥸","🤩","🥳","😏","😒","😞","😔","😟","😕","🙁","☹️","😣","😖","😫",
+    "😩","🥺","😢","😭","😤","😠","😡","🤬","🤯","😳","🥵","🥶","😱","😨","😰",
+    "😥","😓","🤗","🤔","🤭","🤫","🤥","😶","😐","😑","😬","🙄","😯","😦","😧",
+    "😮","😲","🥱","😴","🤤","😪","😵","🤐","🥴","🤢","🤮","🤧","😷","🤒","🤕",
+    "🤑","🤠","😈","👿","👹","👺","💀","☠️","👻","👽","👾","🤖","💩","😺","😸",
+    "😹","😻","😼","😽","🙀","😿","😾","🫣","🫡","🫢","🫥","❤️","🧡","💛","💚",
+    "💙","💜","🖤","🤍","🤎","💔","❣️","💕","💞","💓","💗","💖","💘","💝","💟",
+    "💌","🔥","✨","⚡","💥","💫","💦","💨","🕳️","💣","💬","👁️‍🗨️","🗨️","🗯️",
+    "💭","💤","👍","👎","👏","🙌","👐","🤲","🙏","🤝","🤞","✌️","🤟","🤘","👌",
+    "👈","👉","👆","🖕","👇","☝️","✋","🤚","🖐️","🖖","👋","🤙","💪","🦾","🦵",
+    "🦿","🦶","👂","🦻","👃","🧠","🫀","🫁","🦷","🦴","👀","👁️","👅","👄","💋",
+    "🩸","🫦","🫧","🫠"
+  ];
+
   emojis.forEach((e) => {
     const span = document.createElement("span");
     span.textContent = e;
