@@ -1,4 +1,4 @@
-// ========================== Firebase Setup ==========================
+    // ========================== Firebase Setup ==========================
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js";
 import {
   getAuth,
@@ -14,7 +14,10 @@ import {
   serverTimestamp,
   onSnapshot,
   orderBy,
-  query
+  query,
+  deleteDoc,
+  updateDoc,
+  doc
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js";
 
 // ========================== Firebase Config ==========================
@@ -28,77 +31,60 @@ const firebaseConfig = {
   measurementId: "G-STZ7XGVBHH",
 };
 
-// Initialize Firebase
+// ========================== Initialize ==========================
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ========================== AUTH FUNCTIONS ==========================
-
-// SIGNUP
-document.getElementById("sign-create")?.addEventListener("click", () => {
-  const email = document.getElementById("sign-email").value;
-  const password = document.getElementById("sign-password").value;
-  createUserWithEmailAndPassword(auth, email, password)
-    .then(() => {
-      alert("Account created successfully!");
-      window.location.href = "user.html";
-    })
-    .catch((err) => alert(err.message));
-});
-
-// LOGIN
+// ========================== Auth Logic ==========================
 document.getElementById("login-button")?.addEventListener("click", () => {
   const email = document.getElementById("login-email").value;
   const password = document.getElementById("login-password").value;
+
   signInWithEmailAndPassword(auth, email, password)
     .then(() => {
       alert("Login successful!");
-      window.location.href = "user.html";
+      window.location.href = "chat.html";
     })
     .catch((err) => alert(err.message));
 });
 
-// LOGOUT
-document.getElementById("logout-button")?.addEventListener("click", () => {
-  signOut(auth)
+document.getElementById("sign-create")?.addEventListener("click", () => {
+  const email = document.getElementById("sign-email").value;
+  const password = document.getElementById("sign-password").value;
+
+  createUserWithEmailAndPassword(auth, email, password)
     .then(() => {
-      alert("Logged out successfully!");
-      window.location.href = "index.html";
+      alert("Account created successfully!");
+      window.location.href = "chat.html";
     })
     .catch((err) => alert(err.message));
 });
 
-// ========================== USERNAME ==========================
-document.getElementById("username-set")?.addEventListener("click", () => {
-  const username = document.getElementById("username").value.trim();
-  if (username) {
-    localStorage.setItem("username", username);
-    window.location.href = "chat.html";
-  } else {
-    alert("Please enter a valid username.");
-  }
+document.getElementById("logout-button")?.addEventListener("click", () => {
+  signOut(auth).then(() => {
+    alert("Logged out successfully!");
+    window.location.href = "index.html";
+  });
 });
 
-// ========================== CHAT SYSTEM ==========================
+// ========================== Chat Logic ==========================
 const show = document.getElementById("show");
 const input = document.getElementById("message-input");
 const sendButton = document.getElementById("send-button");
+
 let currentUserEmail = null;
 
-// Check Login User
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUserEmail = user.email;
-    console.log("Logged in:", currentUserEmail);
     loadMessages();
   } else {
-    console.log("No user logged in");
     currentUserEmail = null;
   }
 });
 
-// Send Message
+// ✅ Send Message
 sendButton?.addEventListener("click", sendMessage);
 input?.addEventListener("keypress", (e) => {
   if (e.key === "Enter") sendMessage();
@@ -108,7 +94,7 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text || !currentUserEmail) return;
 
-  input.value = ""; // ✅ clear input instantly
+  input.value = ""; // clear input
   input.focus();
 
   await addDoc(collection(db, "messages"), {
@@ -119,13 +105,15 @@ async function sendMessage() {
   });
 }
 
-// Load Messages (Right/Left Alignment)
+// ✅ Load Messages
 function loadMessages() {
   const q = query(collection(db, "messages"), orderBy("timestamp"));
   onSnapshot(q, (snapshot) => {
     show.innerHTML = "";
-    snapshot.forEach((doc) => {
-      const msg = doc.data();
+    snapshot.forEach((docSnap) => {
+      const msg = docSnap.data();
+      const id = docSnap.id;
+
       const div = document.createElement("div");
       div.classList.add("chat-message");
       if (msg.email === currentUserEmail) div.classList.add("self");
@@ -133,21 +121,50 @@ function loadMessages() {
       div.innerHTML = `
         <div class="msg-header">
           <b>${msg.email.split("@")[0]}</b> • ${msg.time || ""}
+          ${
+            msg.email === currentUserEmail
+              ? `
+              <span class="msg-actions">
+                <button class="edit-btn" title="Edit">✏️</button>
+                <button class="delete-btn" title="Delete">🗑️</button>
+              </span>
+            `
+              : ""
+          }
         </div>
         <div class="msg-body">${msg.text}</div>
       `;
+
+      // Edit Button
+      const editBtn = div.querySelector(".edit-btn");
+      editBtn?.addEventListener("click", async () => {
+        const newText = prompt("Edit your message:", msg.text);
+        if (newText && newText.trim() !== "") {
+          await updateDoc(doc(db, "messages", id), { text: newText });
+        }
+      });
+
+      // Delete Button
+      const delBtn = div.querySelector(".delete-btn");
+      delBtn?.addEventListener("click", async () => {
+        if (confirm("Delete this message?")) {
+          await deleteDoc(doc(db, "messages", id));
+        }
+      });
+
       show.appendChild(div);
     });
+
     show.scrollTop = show.scrollHeight;
   });
 }
 
-// ========================== EMOJI PICKER ==========================
+// ========================== Emoji Picker ==========================
 const emojiBtn = document.getElementById("emoji-btn");
 const emojiPicker = document.getElementById("emoji-picker");
 
 if (emojiBtn && emojiPicker && input) {
-  const emojis = ["😀","😂","🤣","😍","😘","😎","😇","😢","😭","😡","😋","🥳","👍","🙏","👏","🔥","❤"];
+  const emojis = ["😀","😂","🤣","😍","😘","😎","😇","😢","😭","😡","😋","🥳","👍","🙏","👏","🔥","❤","❤️","😭","🙏🏻","🫂","🙈","💕","🤔","🥹","😛"];
   emojis.forEach((e) => {
     const span = document.createElement("span");
     span.textContent = e;
@@ -161,7 +178,8 @@ if (emojiBtn && emojiPicker && input) {
 
   emojiBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    emojiPicker.style.display = emojiPicker.style.display === "block" ? "none" : "block";
+    emojiPicker.style.display =
+      emojiPicker.style.display === "block" ? "none" : "block";
   });
 
   document.addEventListener("click", (e) => {
@@ -170,7 +188,7 @@ if (emojiBtn && emojiPicker && input) {
   });
 }
 
-// ========================== SCROLL FIX ==========================
+// ========================== Scroll Fix ==========================
 window.addEventListener("load", () => {
   const chatContainer = document.getElementById("show");
   const chatBox = document.querySelector(".chat");
