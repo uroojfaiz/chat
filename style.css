@@ -65,13 +65,14 @@ body {
 
 #theme {
   border-radius: 50%;
-  background: rgba(255,255,255,0.1);
+  background: rgb(255, 254, 254);
   padding: 6px 10px;
 }
 
 .theme {
   width: 26px;
   height: 26px;
+  
 }
 
 /* ========== MAIN HERO SECTION ========== */

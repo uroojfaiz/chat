@@ -125,7 +125,7 @@ document.getElementById("theme")?.addEventListener("click", () => {
   const color2 = "#" + Math.floor(Math.random() * 16777215).toString(16);
 
   // Apply gradient inline
-  document.body.style.background = linear-gradient(`135deg, ${color1}, ${color2}`);
+  document.body.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
 
   // Stop animation so theme color shows properly
   document.body.style.animation = "none";
