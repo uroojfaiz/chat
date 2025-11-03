@@ -3,47 +3,46 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChatX app</title>
+  <title>ChatX - Web Messenger</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="shortcut icon" href="./download.png" type="image/x-icon">
 </head>
 <body>
-  <div class="container">
-    <div class="btn">
+  <!-- ===== TOP NAV ===== -->
+  <header class="header">
+    <div class="logo">ChatX</div>
+    <div class="nav-buttons">
       <button id="sign-up"><a href="sign.html">Sign-Up</a></button>
       <button id="theme">
-        <img
-          src="./sun-removebg-preview-removebg-preview.png"
-          alt=""
-          class="theme"
-        />
+        <img src="./sun-removebg-preview-removebg-preview.png" alt="theme" class="theme">
       </button>
       <button id="login"><a href="login.html">Login</a></button>
     </div>
+  </header>
 
-    <div class="img">ChatX</div>
-    <h1 class="h1">Chat <br />Messenger</h1>
-    <img
-      src="./WhatsApp_Image_2025-11-02_at_01.41.25_e117cf7f-removebg-preview.png"
-      alt=""
-      class="big"
-    />
-    <h3>Web Chat App</h3>
-    <div class="qr-display">
-  <img src="./download (9).png" alt="ChatX QR Code" class="qr-img" />
- 
-</div>
- <p class="qr-text">📱 Scan this QR code to open <b>ChatX</b> on your mobile device.</p>
-    <p class="p1">🌍 Chat Globally – Connect with people from all over the world.</p>
-    <p class="p2">💬 Group & Private Chat – Easily chat in groups or one-on-one.</p>
-    <p class="p3">🔒 Saved Messages – Keep your chat history safe and secure.</p>
-    <p class="p4">⚡ Real-Time Messaging – Experience instant communication without delays.</p>
+  <!-- ===== MAIN CONTENT ===== -->
+  <main class="hero-section">
+    <div class="hero-text">
+      <h1>Chat <span>Messenger</span></h1>
+      <h3>Fast • Secure • Global</h3>
 
-   
-    
+      <div class="features">
+        <p>🌍 <b>Chat Globally</b> — Connect with people around the world.</p>
+        <p>💬 <b>Group & Private Chat</b> — Create rooms or chat one-on-one.</p>
+        <p>🔒 <b>Saved Messages</b> — Keep your history safe and synced.</p>
+        <p>⚡ <b>Real-Time Messaging</b> — Instant conversations, no delay.</p>
+      </div>
 
-<!-- 👇 QR Code Section -->
+      <div class="qr-section">
+        <canvas id="qrcode" class="qr-img"></canvas>
+        <p class="qr-text">📱 Scan to open <b>ChatX</b> on mobile</p>
+      </div>
+    </div>
 
+    <div class="hero-image">
+      <img src="./WhatsApp_Image_2025-11-02_at_01.41.25_e117cf7f-removebg-preview.png" alt="Chat Illustration">
+    </div>
+  </main>
 
   <script type="module" src="app.js"></script>
 </body>
