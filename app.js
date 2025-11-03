@@ -56,7 +56,7 @@ document.getElementById("sign-create")?.addEventListener("click", () => {
   createUserWithEmailAndPassword(auth, email, password)
     .then(() => {
       alert("Account created successfully!");
-      window.location.href = "username.html";
+      window.location.href = "user.html";
     })
     .catch((err) => alert(err.message));
 });
@@ -94,7 +94,7 @@ onAuthStateChanged(auth, (user) => {
     const username = localStorage.getItem("username");
     if (!username) {
       alert("Please set your username first!");
-      window.location.href = "username.html";
+      window.location.href = "user.html";
     } else {
       loadMessages();
     }
