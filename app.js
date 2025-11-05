@@ -43,6 +43,7 @@ const emojiBtn = document.getElementById("emoji-btn");
 const emojiPicker = document.getElementById("emoji-picker");
 const qrToggle = document.getElementById("qr-toggle");
 const qrContainer = document.getElementById("qr-container");
+const themeBtn = document.getElementById("theme");
 const logoutBtn = document.getElementById("logout");
 const loginBtn = document.getElementById("login-button");
 const signCreateBtn = document.getElementById("sign-create");
@@ -92,19 +93,12 @@ logoutBtn?.addEventListener("click", () => {
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUserEmail = user.email;
-    // If username is not set, warn and redirect to user page
-    const name = localStorage.getItem("username");
-    if (!name) {
-      alert("Please set a username first");
-      window.location.href = "user.html";
-    } else {
-      currentUsername = name;
-      // start loading messages and typing listeners
+   
+    if (currentUsername) {
       startListeners();
     }
   } else {
     currentUserEmail = null;
-    // optionally redirect to index.html
   }
 });
 
@@ -119,17 +113,15 @@ usernameSetBtn?.addEventListener("click", () => {
 });
 
 // ========================== Theme (global) ==========================
+
 document.getElementById("theme")?.addEventListener("click", () => {
-  // Random colors for gradient
-  const color1 = "#" + Math.floor(Math.random() * 16777215).toString(16);
-  const color2 = "#" + Math.floor(Math.random() * 16777215).toString(16);
 
-  // Apply gradient inline
+  const color1 = "#" + Math.floor(Math.random()*16777215).toString(16);
+  const color2 = "#" + Math.floor(Math.random()*16777215).toString(16);
   document.body.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
-
-  // Stop animation so theme color shows properly
-  document.body.style.animation = "none";
 });
+
+
 
 // ========================== QR Code ==========================
 if (qrToggle && qrContainer) {
@@ -587,10 +579,7 @@ function styleMenuBtn(btn) {
 // remove message DOM when it is removed from DB
 const messagesRoot = ref(db, "messages");
 onChildChanged(messagesRoot, () => {}); // placeholder for real-time behavior
-// set up onChildAdded already, set onChildRemoved to remove DOM nodes
-// Note: Realtime Database doesn't have onChildRemoved import here; use onChildChanged pattern with get.
-// But library provides 'onChildRemoved' normally — if your environment supports it, you can add it similarly.
-// We'll implement a simple polling listener to remove nodes when missing (lightweight)
+
 setInterval(async () => {
   try {
     const snap = await get(ref(db, "messages"));
@@ -621,3 +610,43 @@ init();
 window.addEventListener("load", () => {
   scrollToBottom();
 });
+window.addEventListener("resize", () => {
+  scrollToBottom();
+});
+
+
+// ========================== Voice Input (Mic) ==========================
+const micButton = document.getElementById("mic-button");
+if (micButton && inputField) {
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (SpeechRecognition) {
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-US"; // You can change to "hi-IN" for Hindi
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    micButton.addEventListener("click", () => {
+      recognition.start();
+      micButton.classList.add("active");
+    });
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      inputField.value += " " + transcript;
+    };
+
+    recognition.onend = () => {
+      micButton.classList.remove("active");
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      micButton.classList.remove("active");
+    };
+  } else {
+    console.warn("Speech Recognition not supported in this browser.");
+  }
+}
+
